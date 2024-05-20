@@ -1,0 +1,20 @@
+# project-specific ignore
+checkpoints/
+plots/
+wandb/
+
+# Python
+*.pyc
+__pycache__/
+venv/
+*.egg-info/
+dist/
+build/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.code-workspace
+
+# Dependency management
+pip-lock.txt
