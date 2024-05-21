@@ -14,15 +14,15 @@ from turb_vae.vae.layers import Decoder2d, Encoder2d
 class TurbVaeConfig:
     # model
     vae_config = dict(
-        encoder = Encoder2d(1, 4, (1, 3, 3, 3), (64,) * 4, "relu"),
-        decoder = Decoder2d(4, 1, (3, 3, 3, 1), (64,) * 4, 2, "relu"),
+        encoder = Encoder2d(1, 16, (1, 3, 3, 3), (64,) * 4, "relu"),
+        decoder = Decoder2d(16, 1, (3, 3, 3, 1), (64,) * 4, 2, "relu"),
         kl_weight = 0.01,
         learning_rate = 1e-4
     )
 
     # dataset
     train_dataset = VonKarmanXY(
-        num_samples=int(1e6),
+        num_samples=int(1e7),
         resolution=(24, 24),
         x_range=(-1, 1),
         y_range=(-1, 1),
@@ -40,7 +40,7 @@ class TurbVaeConfig:
     test_dataset.num_samples = int(1e4)
 
     # dataloaders
-    num_workers = 15
+    num_workers = 56
     fit_params = dict(
         train_dataloaders = DataLoader(
             train_dataset, batch_size=64, num_workers=num_workers, persistent_workers=True

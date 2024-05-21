@@ -2,6 +2,7 @@
 checkpoints/
 plots/
 wandb/
+*.out
 
 # Python
 *.pyc
