@@ -2,8 +2,8 @@
 import pytorch_lightning as pl
 import torch
 
-from vae.layers import Decoder2d, Encoder2d
-from vae.vae import VariationalAutoencoder
+from turb_vae.vae.layers import Decoder2d, Encoder2d
+from turb_vae.vae.vae import VariationalAutoencoder
 
 torch.set_float32_matmul_precision("medium")
 

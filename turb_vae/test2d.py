@@ -1,12 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from data_generation.dataset import VonKarmanXY
 from torch import nn
 
-from data_generation.dataset import VonKarmanXY
-from train2d import VAETrainer
+from turb_vae.train2d import VAETrainer
 
-model = VAETrainer.load_from_checkpoint("checkpoints/epoch=0-step=156250.ckpt")
+model = VAETrainer.load_from_checkpoint("checkpoints/epoch=0-step=15620-v1.ckpt")
+
+# export for turbulence removal project
+torch.save(model.vae.decoder.state_dict(), "/home/hudson/code/turbulence_model/models/turb_vae/decoder.pt")
 
 
 torch.set_grad_enabled(False)
@@ -45,11 +48,7 @@ for ix, (n, L0) in enumerate(dataset):
 
 # test random generation
 z = torch.randn(30, model.vae.decoder.in_channels, 8, 8).to("cuda")
-
-print(z.shape)
 n_hat = model.vae.decoder(z).cpu().numpy().squeeze()
-
-print(n_hat.shape)
 
 fig, axs = plt.subplots(5, 6, figsize=(12, 10))
 for ix, n in enumerate(n_hat):

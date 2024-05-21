@@ -6,23 +6,23 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from torch import nn
 from torch.utils.data import DataLoader
-from vae.layers import Decoder2d, Encoder2d
 
-from data_generation.dataset import VonKarmanXY
+from turb_vae.data_generation.dataset import VonKarmanXY
+from turb_vae.vae.layers import Decoder2d, Encoder2d
 
 
 class TurbVaeConfig:
     # model
     vae_config = dict(
-        encoder = Encoder2d(1, 16, (1, 4, 4, 4), (96,) * 4, "relu"),
-        decoder = Decoder2d(16, 1, (4, 4, 4, 1), (96,) * 4, 2, "relu"),
+        encoder = Encoder2d(1, 4, (1, 3, 3, 3), (64,) * 4, "relu"),
+        decoder = Decoder2d(4, 1, (3, 3, 3, 1), (64,) * 4, 2, "relu"),
         kl_weight = 0.01,
-        learning_rate = 1e-5
+        learning_rate = 1e-4
     )
 
     # dataset
     train_dataset = VonKarmanXY(
-        num_samples=int(1e7),
+        num_samples=int(1e6),
         resolution=(24, 24),
         x_range=(-1, 1),
         y_range=(-1, 1),

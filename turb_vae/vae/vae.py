@@ -3,7 +3,7 @@ from typing import Tuple
 import torch
 from torch import nn
 
-from vae.layers import Decoder2d, Encoder2d
+from turb_vae.vae.layers import Decoder2d, Encoder2d
 
 
 class VariationalAutoencoder(nn.Module):
