@@ -1,11 +1,12 @@
 from typing import Tuple
 
 import torch
+
+# from .layers import Decoder2d, Encoder2d
+# from layers import Decoder2d, Encoder2d
 from torch import nn
 
 from turb_vae.vae.layers import Decoder2d, Encoder2d
-
-# from .layers import Decoder2d, Encoder2d
 
 
 class DiagonalMultivariateNormal(torch.distributions.Normal):
@@ -78,14 +79,18 @@ class LowRankVariationalAutoencoder(nn.Module):
             The rank of the approximate posterior.
         num_particles (`int`, optional):
             The number of particles to sample from the approximate posterior. Default is 1.
+        cov_factor_init_scale (`float`, optional):
+            The scale to initialize the off-diagonal part of the covariance matrix. Default is 1e-5.
+            This scales the output of the encoder elements for cov_factor. Default initialization leads to very poor convergence.
     """
 
-    def __init__(self, encoder: Encoder2d, decoder: Decoder2d, rank: int, num_particles=1):
+    def __init__(self, encoder: Encoder2d, decoder: Decoder2d, rank: int, num_particles=1, cov_factor_init_scale = 1e-5):
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
         self.rank = rank
         self.num_particles = num_particles
+        self.cov_factor_init_scale = cov_factor_init_scale
 
         assert rank >= 1 and isinstance(rank, int), "The rank must be a positive integer."
 
@@ -105,7 +110,7 @@ class LowRankVariationalAutoencoder(nn.Module):
         batch_size = loc.shape[0]
         CHW = loc.shape[1:]
         cov_diag = dist_pars[..., self.decoder.in_channels : 2*self.decoder.in_channels, :, :].exp() # logD.shape = (batch_size, C, H, W)
-        cov_factor = dist_pars[..., 2*self.decoder.in_channels :, :, :] # A.shape = (batch_size, C*rank, H, W)
+        cov_factor = self.cov_factor_init_scale * dist_pars[..., 2*self.decoder.in_channels :, :, :] # A.shape = (batch_size, C*rank, H, W)
 
         # reshape the parameters for creating the distribution object
         loc = loc.view(batch_size, -1)  # mu.shape = (batch_size, C*H*W)
