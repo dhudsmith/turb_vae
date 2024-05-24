@@ -1,10 +1,11 @@
 from typing import Tuple
 
 import torch
-
-# from turb_vae.vae.layers import Decoder2d, Encoder2d
-from layers import Decoder2d, Encoder2d
 from torch import nn
+
+from turb_vae.vae.layers import Decoder2d, Encoder2d
+
+# from .layers import Decoder2d, Encoder2d
 
 
 class DiagonalMultivariateNormal(torch.distributions.Normal):
@@ -41,11 +42,28 @@ class LowRankMultivariateNormal(torch.distributions.LowRankMultivariateNormal):
     def __init__(self, loc: torch.Tensor, cov_factor: torch.Tensor, cov_diag: torch.Tensor):
         super().__init__(loc, cov_factor, cov_diag)
 
+        self.event_size = loc.shape[-1]
+        self.batch_size = loc.shape[0]
+
     def kl_divergence(self) -> torch.Tensor:
         r"""The KL divergence from a standard multivariate normal"""
-        raise NotImplementedError("The kl divergence method is not implemented yet.")
 
+        # mu^T mu
+        sqr_mu = self.loc.pow(2).sum(-1)
+        
+        # the trace of the covariance matrix
+        # self.cov_factor.shape = (batch_size, event_size, rank)
+        # tr(cov_factor^T cov_factor) = sum_{j=1}^k sum_{i=1}^N(cov_factor *h* cov_factor)_{:,i,j}
+        # where *h* is the Hadamard/elementwise product
+        tr_cov = self.cov_diag.sum(-1) + (self.cov_factor**2).sum((-1, -2))
 
+        # the log determinant of the covariance matrix
+        # this takes advantage of the pre-computed Cholesky decomposition of the capacitance matrix called _capacitance_tril
+        # _capacitance_tril.shape = (batch_size, event_size, event_size)
+        logdet_sigma = self.cov_diag.log().sum(-1) + 2 * self._capacitance_tril.diagonal(dim1=-2, dim2=-1).log().sum(-1)
+
+        return 0.5 * (tr_cov + sqr_mu - self.event_size - logdet_sigma)
+        
 
 class LowRankVariationalAutoencoder(nn.Module):
     r"""
@@ -56,8 +74,10 @@ class LowRankVariationalAutoencoder(nn.Module):
             The encoder network.
         decoder (`Decoder2d`):
             The decoder network.
-        rank (`int`, optional):
-            The rank of the approximate posterior. Default is 0.
+        rank (`int`):
+            The rank of the approximate posterior.
+        num_particles (`int`, optional):
+            The number of particles to sample from the approximate posterior. Default is 1.
     """
 
     def __init__(self, encoder: Encoder2d, decoder: Decoder2d, rank: int, num_particles=1):
@@ -75,30 +95,30 @@ class LowRankVariationalAutoencoder(nn.Module):
 
     def forward(
         self, x: torch.FloatTensor, sample: bool = True
-    ) -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
+    ) -> Tuple[torch.FloatTensor, LowRankMultivariateNormal]:
         r"""The forward method of the `VariationalAutoencoder` class."""
         dist_pars = self.encoder(x)
         # dist_pars.shape = (batch_size, out_channels, height, width)
 
         # pull off the individual params
-        mu = dist_pars[..., : self.decoder.in_channels, :, :]  # mu.shape = (batch_size, C, H, W)
-        batch_size = mu.shape[0]
-        CHW = mu.shape[1:]
-        logD = dist_pars[..., self.decoder.in_channels : 2*self.decoder.in_channels, :, :] # logD.shape = (batch_size, C, H, W)
-        A = dist_pars[..., 2*self.decoder.in_channels :, :, :] # A.shape = (batch_size, C*rank, H, W)
+        loc = dist_pars[..., : self.decoder.in_channels, :, :]  # mu.shape = (batch_size, C, H, W)
+        batch_size = loc.shape[0]
+        CHW = loc.shape[1:]
+        cov_diag = dist_pars[..., self.decoder.in_channels : 2*self.decoder.in_channels, :, :].exp() # logD.shape = (batch_size, C, H, W)
+        cov_factor = dist_pars[..., 2*self.decoder.in_channels :, :, :] # A.shape = (batch_size, C*rank, H, W)
 
         # reshape the parameters for creating the distribution object
-        mu = mu.view(batch_size, -1)  # mu.shape = (batch_size, C*H*W)
-        logD = logD.view(batch_size, -1)  # logD.shape = (batch_size, C*H*W)
-        A = A.view(batch_size, rank, -1).permute(0, 2, 1)  # A.shape = (batch_size, C*H*W, rank)
+        loc = loc.view(batch_size, -1)  # mu.shape = (batch_size, C*H*W)
+        cov_diag = cov_diag.view(batch_size, -1)  # logD.shape = (batch_size, C*H*W)
+        cov_factor = cov_factor.view(batch_size, self.rank, -1).permute(0, 2, 1)  # A.shape = (batch_size, C*H*W, rank)
 
         # the distribution object
-        dist = LowRankMultivariateNormal(mu, A, logD.exp())
+        dist = LowRankMultivariateNormal(loc, cov_factor, cov_diag.exp())
         
         if sample:
             z = dist.rsample((self.num_particles,))  # z.shape = (num_particles, batch_size, C*H*W)
         else:
-            z = mu
+            z = loc
 
         # reshape for the decoder
         # we combine batch and particle dimensions because conv2d doesn't allow arbitrary batching on left
@@ -137,6 +157,6 @@ if __name__ == "__main__":
     print("VAE output shape:", x_hat.shape)
 
     # test the KL divergence
-    # kl = dist.kl_divergence()
+    kl = dist.kl_divergence()
 
-    print(sum(p.numel() for p in vae.parameters()))
+    print(kl)

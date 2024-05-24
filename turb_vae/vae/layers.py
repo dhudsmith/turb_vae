@@ -76,7 +76,7 @@ class AutoencoderBlock2d(BaseAutoencoderBlock):
         )
 
         self.conv = nn.Sequential(
-            nn.Conv2d(self.in_channels, self.out_channels, kernel_size=3, padding=1, bias=False),
+            nn.Conv2d(self.in_channels, self.out_channels, kernel_size=3, padding=1, bias=False, padding_mode='reflect'),
             nn.BatchNorm2d(self.out_channels),
             self.fuse,
             nn.Conv2d(self.out_channels, self.out_channels, kernel_size=3, padding=1, bias=False),

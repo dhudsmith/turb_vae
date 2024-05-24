@@ -10,19 +10,24 @@ from torch.utils.data import DataLoader
 from turb_vae.data_generation.dataset import VonKarmanXY
 from turb_vae.vae.layers import Decoder2d, Encoder2d
 
+# from data_generation.dataset import VonKarmanXY
+# from vae.layers import Decoder2d, Encoder2d
+
 
 class TurbVaeConfig:
     # model
     vae_config = dict(
-        encoder = Encoder2d(1, 16, (1, 3, 3, 3), (64,) * 4, "relu"),
-        decoder = Decoder2d(16, 1, (3, 3, 3, 1), (64,) * 4, 2, "relu"),
-        kl_weight = 0.01,
+        rank = (r:=5),
+        encoder = Encoder2d(1, 4*(2+r), (1, 3, 3, 3), (32,) * 4, "relu"),
+        decoder = Decoder2d(4, 1, (3, 3, 3, 1), (32,) * 4, 2, "relu"),
+        num_particles = 1,
+        kl_weight = 1.,
         learning_rate = 1e-4
     )
 
     # dataset
     train_dataset = VonKarmanXY(
-        num_samples=int(1e7),
+        num_samples=int(1e6),
         resolution=(24, 24),
         x_range=(-1, 1),
         y_range=(-1, 1),
@@ -61,7 +66,6 @@ class TurbVaeConfig:
         "checkpoints/", save_top_k=1, monitor="val_loss", 
     )
     trainer = pl.Trainer(
-        precision="16-mixed",
         log_every_n_steps=100,
         max_epochs=1,
         logger=logger,
