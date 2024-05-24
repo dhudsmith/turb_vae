@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=turbvae
-#SBATCH --partition=wficai
+#~SBATCH --partition=wficai
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=56
 #SBATCH --mem=128G

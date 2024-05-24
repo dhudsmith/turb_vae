@@ -18,11 +18,11 @@ class TurbVaeConfig:
     # model
     vae_config = dict(
         rank = (r:=5),
-        encoder = Encoder2d(1, 4*(2+r), (1, 3, 3, 3), (32,) * 4, "relu"),
-        decoder = Decoder2d(4, 1, (3, 3, 3, 1), (32,) * 4, 2, "relu"),
+        encoder = Encoder2d(1, (c1:=4)*(2+r), (1, 3, 3, 3), (c2:=64,) * 4, "relu"),
+        decoder = Decoder2d(c1, 1, (3, 3, 3, 1), (c2,) * 4, 2, "relu"),
         num_particles = 1,
-        kl_weight = 1.,
-        learning_rate = 1e-4
+        kl_weight = 0.1,
+        learning_rate = 1e-5
     )
 
     # dataset
@@ -42,7 +42,7 @@ class TurbVaeConfig:
     val_dataset.num_samples = int(1e4)
     test_dataset = deepcopy(train_dataset)
     test_dataset.base_seed = 12345
-    test_dataset.num_samples = int(1e4)
+    test_dataset.num_samples = int(1e5)
 
     # dataloaders
     num_workers = 56
