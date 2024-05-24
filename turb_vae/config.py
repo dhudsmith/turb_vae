@@ -7,6 +7,7 @@ import pytorch_lightning as pl
 # from turb_vae.data_generation.dataset import VonKarmanXY
 # from turb_vae.vae.layers import Decoder2d, Encoder2d
 from data_generation.dataset import VonKarmanXY
+from kl_scheduler import KLScheduler
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from torch import nn
@@ -20,11 +21,12 @@ class TurbVaeConfig:
         rank = (r:=10),
         encoder = Encoder2d(1, (c1:=16)*(2+r), (1, 3, 3, 3), (c2:=64,) * 4, "relu"),
         decoder = Decoder2d(c1, 1, (3, 3, 3, 1), (c2,) * 4, 2, "relu"),
-        num_particles = 3            
+        num_particles = 3,
+        cov_factor_init_scale = 1e-3,    
     )
     del r, c1, c2
 
-    kl_weight = 0.1
+    kl_scheduler = KLScheduler(1e-3, 1e-1, int(9e4))
     learning_rate = 1e-4
 
     # dataset
@@ -47,7 +49,7 @@ class TurbVaeConfig:
     test_dataset.num_samples = int(1e3)
 
     # dataloaders
-    num_workers = 56
+    num_workers = 19
     fit_params = dict(
         train_dataloaders = DataLoader(
             train_dataset, batch_size=64, num_workers=num_workers, persistent_workers=True
@@ -73,7 +75,7 @@ class TurbVaeConfig:
         logger=logger,
         callbacks=[checkpoint_callback],
         val_check_interval=0.1,
-        gradient_clip_val=5.0,
+        gradient_clip_val=2.0,
     )
 
     @classmethod

@@ -16,11 +16,12 @@ class VAETrainer(pl.LightningModule):
 
         self.cfg = cfg
         
+        
         self.vae = LowRankVariationalAutoencoder(
             **cfg.vae_config
         )
 
-        self.kl_weight: float = cfg.kl_weight
+        self.kl_scheduler = cfg.kl_scheduler
         self.learning_rate: float = cfg.learning_rate
 
     def training_step(self, batch, _):  # type: ignore
@@ -31,14 +32,17 @@ class VAETrainer(pl.LightningModule):
         self.log("train_kl_loss", kl_loss, prog_bar=True, on_step=True)
         self.log("train_recon_loss", recon_loss, prog_bar=True, on_step=True)
 
+        num_samples = batch[0].shape[0]
+        self.kl_scheduler.step(num_samples)
+
         return loss
 
     def validation_step(self, batch, _):  # type: ignore
         loss, recon_loss, kl_loss = self.get_losses(batch)
 
         # log losses
-        self.log("val_loss", loss, prog_bar=True, on_step=False, on_epoch=True)
-        self.log("val_kl_loss", kl_loss, prog_bar=True, on_step=False, on_epoch=True)
+        self.log("val_loss", loss, prog_bar=False, on_step=False, on_epoch=True)
+        self.log("val_kl_loss", kl_loss, prog_bar=False, on_step=False, on_epoch=True)
         self.log(
             "val_recon_loss", recon_loss, prog_bar=True, on_step=False, on_epoch=True
         )
@@ -65,7 +69,11 @@ class VAETrainer(pl.LightningModule):
         # we unsqueeze n to add the dummy particle dimension
         recon_loss = torch.nn.functional.mse_loss(n_hat, n.unsqueeze(0))
         kl_loss = dist.kl_divergence().mean()
-        loss =  recon_loss + self.kl_weight * kl_loss
+        beta = self.kl_scheduler.get_kl_weight()
+        loss =  recon_loss + beta * kl_loss
+
+        # log the kl weight
+        self.log("kl_weight", beta, prog_bar=True, on_step=True, on_epoch=False)
 
         return loss, recon_loss, kl_loss
     
