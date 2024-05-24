@@ -6,10 +6,10 @@ from torch import nn
 
 from turb_vae.train2d import VAETrainer
 
-model = VAETrainer.load_from_checkpoint("checkpoints/vae_kl_0p01.ckpt")
+model = VAETrainer.load_from_checkpoint("checkpoints/vae_kl_1.ckpt")
 
 # export for turbulence removal project
-torch.save(model.vae.decoder.state_dict(), "/home/hudson/code/turbulence_model/models/turb_vae/decoder_0p01.pt")
+torch.save(model.vae.decoder.state_dict(), "/home/hudson/code/turbulence_model/models/turb_vae/decoder_kl_1.pt")
 
 
 torch.set_grad_enabled(False)

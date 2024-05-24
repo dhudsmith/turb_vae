@@ -148,10 +148,10 @@ class Encoder2d(nn.Module):
             for _ in range(num_block):
                 layers.append(AutoencoderBlock2d(num_channels, num_channels, act_fn))
 
-        # output 2*out_channels for mean and logvar
+        # output conv
         layers.append(
             nn.Conv2d(
-                block_out_channels[-1], 2 * out_channels, kernel_size=3, padding=1
+                block_out_channels[-1], out_channels, kernel_size=3, padding=1
             )
         )
 
