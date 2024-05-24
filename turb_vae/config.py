@@ -1,3 +1,4 @@
+import inspect
 from copy import deepcopy
 
 import numpy as np
@@ -19,10 +20,11 @@ class TurbVaeConfig:
         rank = (r:=10),
         encoder = Encoder2d(1, (c1:=16)*(2+r), (1, 3, 3, 3), (c2:=64,) * 4, "relu"),
         decoder = Decoder2d(c1, 1, (3, 3, 3, 1), (c2,) * 4, 2, "relu"),
-        num_particles = 1,    
+        num_particles = 5,    
     )
+    del r, c1, c2
 
-    kl_weight = 1,
+    kl_weight = 1
     learning_rate = 1e-4
 
     # dataset
@@ -55,7 +57,7 @@ class TurbVaeConfig:
         )
     )
     test_params = dict(
-        test_dataloaders = DataLoader(
+        dataloaders = DataLoader(
             test_dataset, batch_size=int(1e3), num_workers=num_workers, persistent_workers=True
         )
     )
@@ -73,3 +75,14 @@ class TurbVaeConfig:
         val_check_interval=0.1,
         gradient_clip_val=5.0,
     )
+
+    @classmethod
+    def to_dict(cls):
+        return {k: repr(v) for k, v in cls.__dict__.items() if not k.startswith("__") and not inspect.ismethod(v) and k!= "to_dict"}
+
+    
+if __name__ == "__main__":
+    import json
+    cfg = TurbVaeConfig()
+
+    print(json.dumps(cfg.to_dict(), indent=2))

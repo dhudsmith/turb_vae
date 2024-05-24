@@ -124,6 +124,9 @@ class Encoder2d(nn.Module):
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
+        self.num_blocks = num_blocks
+        self.block_out_channels = block_out_channels
+        self.act_fn = act_fn
 
         layers = []
         for i, num_block in enumerate(num_blocks):
@@ -160,6 +163,9 @@ class Encoder2d(nn.Module):
     def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
         r"""The forward method of the `Encoder` class."""
         return self.layers(x)
+    
+    def __repr__(self):
+        return f"Encoder2d(in_channels={self.in_channels}, out_channels={self.out_channels}, num_blocks={self.num_blocks}, block_out_channels={self.block_out_channels}, act_fn={self.act_fn})"
 
 
 class Decoder2d(nn.Module):
@@ -194,6 +200,10 @@ class Decoder2d(nn.Module):
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
+        self.num_blocks = num_blocks
+        self.block_out_channels = block_out_channels
+        self.upsampling_scaling_factor = upsampling_scaling_factor
+        self.act_fn = act_fn
 
         layers = [
             nn.Conv2d(in_channels, block_out_channels[0], kernel_size=3, padding=1),
@@ -226,3 +236,6 @@ class Decoder2d(nn.Module):
     def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
         r"""The forward method of the `Decoder` class."""
         return self.layers(x)
+    
+    def __repr__(self):
+        return f"Decoder2d(in_channels={self.in_channels}, out_channels={self.out_channels}, num_blocks={self.num_blocks}, block_out_channels={self.block_out_channels}, upsampling_scaling_factor={self.upsampling_scaling_factor}, act_fn={self.act_fn})"
