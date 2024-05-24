@@ -3,13 +3,12 @@ import numpy as np
 import torch
 from data_generation.dataset import VonKarmanXY
 from torch import nn
+from train2d import VAETrainer
 
-from turb_vae.train2d import VAETrainer
-
-model = VAETrainer.load_from_checkpoint("checkpoints/vae_kl_1.ckpt")
+model = VAETrainer.load_from_checkpoint("checkpoints/epoch=0-step=12496-v1.ckpt")
 
 # export for turbulence removal project
-torch.save(model.vae.decoder.state_dict(), "/home/hudson/code/turbulence_model/models/turb_vae/decoder_kl_1.pt")
+# torch.save(model.vae.decoder.state_dict(), "/home/hudson/code/turbulence_model/models/turb_vae/decoder_kl_1.pt")
 
 
 torch.set_grad_enabled(False)

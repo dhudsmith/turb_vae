@@ -2,28 +2,28 @@ from copy import deepcopy
 
 import numpy as np
 import pytorch_lightning as pl
+
+# from turb_vae.data_generation.dataset import VonKarmanXY
+# from turb_vae.vae.layers import Decoder2d, Encoder2d
+from data_generation.dataset import VonKarmanXY
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from torch import nn
 from torch.utils.data import DataLoader
-
-from turb_vae.data_generation.dataset import VonKarmanXY
-from turb_vae.vae.layers import Decoder2d, Encoder2d
-
-# from data_generation.dataset import VonKarmanXY
-# from vae.layers import Decoder2d, Encoder2d
+from vae.layers import Decoder2d, Encoder2d
 
 
 class TurbVaeConfig:
     # model
     vae_config = dict(
-        rank = (r:=5),
-        encoder = Encoder2d(1, (c1:=4)*(2+r), (1, 3, 3, 3), (c2:=64,) * 4, "relu"),
+        rank = (r:=10),
+        encoder = Encoder2d(1, (c1:=16)*(2+r), (1, 3, 3, 3), (c2:=64,) * 4, "relu"),
         decoder = Decoder2d(c1, 1, (3, 3, 3, 1), (c2,) * 4, 2, "relu"),
-        num_particles = 1,
-        kl_weight = 0.1,
-        learning_rate = 1e-5
+        num_particles = 1,    
     )
+
+    kl_weight = 1,
+    learning_rate = 1e-4
 
     # dataset
     train_dataset = VonKarmanXY(
@@ -39,10 +39,10 @@ class TurbVaeConfig:
     )
     val_dataset = deepcopy(train_dataset)
     val_dataset.base_seed = 777
-    val_dataset.num_samples = int(1e4)
+    val_dataset.num_samples = int(1e3)
     test_dataset = deepcopy(train_dataset)
     test_dataset.base_seed = 12345
-    test_dataset.num_samples = int(1e5)
+    test_dataset.num_samples = int(1e3)
 
     # dataloaders
     num_workers = 56
@@ -61,7 +61,7 @@ class TurbVaeConfig:
     )
 
     # training
-    logger = WandbLogger(project="turb_vae", name="vae_train", offline=False)
+    logger = WandbLogger(project="turb_vae", offline=False)
     checkpoint_callback = ModelCheckpoint(
         "checkpoints/", save_top_k=1, monitor="val_loss", 
     )
@@ -71,4 +71,5 @@ class TurbVaeConfig:
         logger=logger,
         callbacks=[checkpoint_callback],
         val_check_interval=0.1,
+        gradient_clip_val=5.0,
     )

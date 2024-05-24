@@ -2,11 +2,12 @@ from typing import Tuple
 
 import torch
 
-# from .layers import Decoder2d, Encoder2d
 # from layers import Decoder2d, Encoder2d
 from torch import nn
 
-from turb_vae.vae.layers import Decoder2d, Encoder2d
+from .layers import Decoder2d, Encoder2d
+
+# from turb_vae.vae.layers import Decoder2d, Encoder2d
 
 
 class DiagonalMultivariateNormal(torch.distributions.Normal):
@@ -47,7 +48,10 @@ class LowRankMultivariateNormal(torch.distributions.LowRankMultivariateNormal):
         self.batch_size = loc.shape[0]
 
     def kl_divergence(self) -> torch.Tensor:
-        r"""The KL divergence from a standard multivariate normal"""
+        r"""
+        The KL divergence from a standard multivariate normal.
+        We take the average over the event size as we will do with the cross entropy loss.
+        """
 
         # mu^T mu
         sqr_mu = self.loc.pow(2).sum(-1)
@@ -63,7 +67,7 @@ class LowRankMultivariateNormal(torch.distributions.LowRankMultivariateNormal):
         # _capacitance_tril.shape = (batch_size, event_size, event_size)
         logdet_sigma = self.cov_diag.log().sum(-1) + 2 * self._capacitance_tril.diagonal(dim1=-2, dim2=-1).log().sum(-1)
 
-        return 0.5 * (tr_cov + sqr_mu - self.event_size - logdet_sigma)
+        return 0.5 * (tr_cov + sqr_mu - self.event_size - logdet_sigma) / self.event_size
         
 
 class LowRankVariationalAutoencoder(nn.Module):

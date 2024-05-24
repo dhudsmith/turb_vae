@@ -1,29 +1,25 @@
 import pytorch_lightning as pl
 import torch
+from config import TurbVaeConfig
 
-from turb_vae.vae.layers import Decoder2d, Encoder2d
-from turb_vae.vae.vae import LowRankMultivariateNormal, LowRankVariationalAutoencoder
-
-# from vae.layers import Decoder2d, Encoder2d
-# from vae.vae import LowRankMultivariateNormal, LowRankVariationalAutoencoder
+# from turb_vae.vae.layers import Decoder2d, Encoder2d
+# from turb_vae.vae.vae import LowRankMultivariateNormal, LowRankVariationalAutoencoder
+from vae.vae import LowRankMultivariateNormal, LowRankVariationalAutoencoder
 
 torch.set_float32_matmul_precision("medium")
 
 
 class VAETrainer(pl.LightningModule):
-    def __init__(self, encoder: Encoder2d, decoder: Decoder2d, rank = 3, num_particles = 1, kl_weight: float = 1.0, learning_rate: float = 1e-3):
+    def __init__(self, cfg: TurbVaeConfig):  #encoder: Encoder2d, decoder: Decoder2d, rank = 3, num_particles = 1, kl_weight: float = 1.0, learning_rate: float = 1e-3):
         super().__init__()
-        self.save_hyperparameters(logger=False)
-
+        self.save_hyperparameters()
+        
         self.vae = LowRankVariationalAutoencoder(
-            encoder,
-            decoder,
-            rank = rank,
-            num_particles = num_particles
+            **cfg.vae_config
         )
 
-        self.kl_weight: float = kl_weight
-        self.learning_rate: float = learning_rate
+        self.kl_weight: float = cfg.kl_weight
+        self.learning_rate: float = cfg.learning_rate
 
     def training_step(self, batch, _):  # type: ignore
         loss, recon_loss, kl_loss = self.get_losses(batch)
@@ -73,7 +69,7 @@ class VAETrainer(pl.LightningModule):
 
 if __name__ == "__main__":
     from config import TurbVaeConfig as cfg
-    model = VAETrainer(**cfg.vae_config).to("cuda")
+    model = VAETrainer(cfg).to("cuda")
     trainer = cfg.trainer
     trainer.fit(model, **cfg.fit_params)
     trainer.test(model, **cfg.test_params)
