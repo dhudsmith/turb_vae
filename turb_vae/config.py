@@ -20,16 +20,16 @@ class TurbVaeConfig:
         rank = (r:=10),
         encoder = Encoder2d(1, (c1:=16)*(2+r), (1, 3, 3, 3), (c2:=64,) * 4, "relu"),
         decoder = Decoder2d(c1, 1, (3, 3, 3, 1), (c2,) * 4, 2, "relu"),
-        num_particles = 5,    
+        num_particles = 3            
     )
     del r, c1, c2
 
-    kl_weight = 1
+    kl_weight = 0.1
     learning_rate = 1e-4
 
     # dataset
     train_dataset = VonKarmanXY(
-        num_samples=int(1e6),
+        num_samples=int(1e7),
         resolution=(24, 24),
         x_range=(-1, 1),
         y_range=(-1, 1),

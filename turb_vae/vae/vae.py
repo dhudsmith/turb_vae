@@ -84,11 +84,11 @@ class LowRankVariationalAutoencoder(nn.Module):
         num_particles (`int`, optional):
             The number of particles to sample from the approximate posterior. Default is 1.
         cov_factor_init_scale (`float`, optional):
-            The scale to initialize the off-diagonal part of the covariance matrix. Default is 1e-5.
-            This scales the output of the encoder elements for cov_factor. Default initialization leads to very poor convergence.
+            The scale to initialize the off-diagonal part of the covariance matrix. Default is 1.
+            This scales the output of the encoder elements for cov_factor. 
     """
 
-    def __init__(self, encoder: Encoder2d, decoder: Decoder2d, rank: int, num_particles=1, cov_factor_init_scale = 1e-5):
+    def __init__(self, encoder: Encoder2d, decoder: Decoder2d, rank: int, num_particles=1, cov_factor_init_scale = 1.):
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
@@ -103,7 +103,7 @@ class LowRankVariationalAutoencoder(nn.Module):
         ), "The output channels of the encoder equal (2 + rank) times the input channels of the decoder."
 
     def forward(
-        self, x: torch.FloatTensor, sample: bool = True
+        self, x: torch.FloatTensor
     ) -> Tuple[torch.FloatTensor, LowRankMultivariateNormal]:
         r"""The forward method of the `VariationalAutoencoder` class."""
         dist_pars = self.encoder(x)
@@ -124,18 +124,16 @@ class LowRankVariationalAutoencoder(nn.Module):
         # the distribution object
         dist = LowRankMultivariateNormal(loc, cov_factor, cov_diag.exp())
         
-        if sample:
-            z = dist.rsample((self.num_particles,))  # z.shape = (num_particles, batch_size, C*H*W)
-        else:
-            z = loc
-
+        
+        z = dist.rsample((self.num_particles,))  # z.shape = (num_particles, batch_size, C*H*W)
         # reshape for the decoder
         # we combine batch and particle dimensions because conv2d doesn't allow arbitrary batching on left
         z = z.view(self.num_particles * batch_size, *CHW)
         # z.shape = (num_particles*batch_size, C, H, W)
-        
-        # now separate the batch and particle dimensions
+            
         x_hat = self.decoder(z)  # x_hat.shape = (num_particles*batch_size, C_out, H_out, W_out)
+    
+        # now separate the batch and particle dimensions
         x_hat = x_hat.view(self.num_particles, batch_size, *x_hat.shape[1:]) # x_hat.shape = (num_particles, batch_size, C_out, H_out, W_out)
 
         return x_hat, dist
