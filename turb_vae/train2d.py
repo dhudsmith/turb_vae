@@ -1,23 +1,22 @@
 import pytorch_lightning as pl
 import torch
-from config import TurbVaeConfig
+from config import BaseConfig
 from pytorch_lightning.loggers import WandbLogger
 
 # from turb_vae.vae.layers import Decoder2d, Encoder2d
 # from turb_vae.vae.vae import LowRankMultivariateNormal, LowRankVariationalAutoencoder
-from vae.vae import LowRankMultivariateNormal, LowRankVariationalAutoencoder
+from vae.vae import LowRankMultivariateNormal, LowRankVariationalAutoencoderProj
 
 torch.set_float32_matmul_precision("medium")
 
 
 class VAETrainer(pl.LightningModule):
-    def __init__(self, cfg: TurbVaeConfig):  #encoder: Encoder2d, decoder: Decoder2d, rank = 3, num_particles = 1, kl_weight: float = 1.0, learning_rate: float = 1e-3):
+    def __init__(self, cfg: BaseConfig):  #encoder: Encoder2d, decoder: Decoder2d, rank = 3, num_particles = 1, kl_weight: float = 1.0, learning_rate: float = 1e-3):
         super().__init__()
 
         self.cfg = cfg
         
-        
-        self.vae = LowRankVariationalAutoencoder(
+        self.vae = LowRankVariationalAutoencoderProj(
             **cfg.vae_config
         )
 
@@ -83,7 +82,7 @@ class VAETrainer(pl.LightningModule):
         logger.experiment.config.update(cfg.to_dict()) 
 
 if __name__ == "__main__":
-    from config import TurbVaeConfig as cfg
+    from config import ProjConfig as cfg
     model = VAETrainer(cfg).to("cuda")
     trainer = cfg.trainer
     trainer.fit(model, **cfg.fit_params)

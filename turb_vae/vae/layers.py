@@ -128,6 +128,10 @@ class Encoder2d(nn.Module):
         self.block_out_channels = block_out_channels
         self.act_fn = act_fn
 
+        assert len(num_blocks) == len(block_out_channels), "Length of num_blocks and block_out_channels must be equal."
+
+        self.downsample_factor = 2 ** (len(num_blocks) - 1)
+
         layers = []
         for i, num_block in enumerate(num_blocks):
             num_channels = block_out_channels[i]
@@ -194,7 +198,6 @@ class Decoder2d(nn.Module):
         out_channels: int,
         num_blocks: Tuple[int, ...],
         block_out_channels: Tuple[int, ...],
-        upsampling_scaling_factor: int,
         act_fn: str,
     ):
         super().__init__()
@@ -202,8 +205,11 @@ class Decoder2d(nn.Module):
         self.out_channels = out_channels
         self.num_blocks = num_blocks
         self.block_out_channels = block_out_channels
-        self.upsampling_scaling_factor = upsampling_scaling_factor
         self.act_fn = act_fn
+
+        assert len(num_blocks) == len(block_out_channels), "Length of num_blocks and block_out_channels must be equal."
+
+        self.upsample_factor = 2 ** (len(num_blocks) - 1)
 
         layers = [
             nn.Conv2d(in_channels, block_out_channels[0], kernel_size=3, padding=1),
@@ -218,7 +224,7 @@ class Decoder2d(nn.Module):
                 layers.append(AutoencoderBlock2d(num_channels, num_channels, act_fn))
 
             if not is_final_block:
-                layers.append(nn.Upsample(scale_factor=upsampling_scaling_factor))
+                layers.append(nn.Upsample(scale_factor=2))
 
             conv_out_channel = num_channels if not is_final_block else out_channels
             layers.append(
@@ -238,4 +244,4 @@ class Decoder2d(nn.Module):
         return self.layers(x)
     
     def __repr__(self):
-        return f"Decoder2d(in_channels={self.in_channels}, out_channels={self.out_channels}, num_blocks={self.num_blocks}, block_out_channels={self.block_out_channels}, upsampling_scaling_factor={self.upsampling_scaling_factor}, act_fn={self.act_fn})"
+        return f"Decoder2d(in_channels={self.in_channels}, out_channels={self.out_channels}, num_blocks={self.num_blocks}, block_out_channels={self.block_out_channels}, act_fn={self.act_fn})"
