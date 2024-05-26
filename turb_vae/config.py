@@ -147,7 +147,7 @@ class ProjConfig(BaseConfig):
     )
 
     # training
-    logger = WandbLogger(project="turb_vae", offline=True)
+    logger = WandbLogger(project="turb_vae", offline=False)
     checkpoint_callback = ModelCheckpoint(
         "checkpoints/", save_top_k=1, monitor="val_elbo", 
     )
