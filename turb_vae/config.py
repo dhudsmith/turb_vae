@@ -13,7 +13,7 @@ from pytorch_lightning.loggers import WandbLogger
 from torch import nn
 from torch.utils.data import DataLoader
 from vae.layers import Decoder2d, Encoder2d
-from vae.vae import LowRankVariationalAutoencoder
+from vae.vae import LowRankVAE
 
 
 class BaseConfig:
@@ -90,8 +90,8 @@ class ProjConfig(BaseConfig):
         encoder_kwargs = dict(
             in_channels = 1,
             out_channels = 16,
-            num_blocks = (1, 5, 5, 5, 5),
-            block_out_channels = (96,) * 5,
+            num_blocks = (1, 5, 5, 5),
+            block_out_channels = (96,) * 4,
             act_fn = 'relu'
         ),
         decoder_kwargs = dict(
@@ -147,7 +147,7 @@ class ProjConfig(BaseConfig):
     )
 
     # training
-    logger = WandbLogger(project="turb_vae", offline=False)
+    logger = WandbLogger(project="turb_vae", offline=True)
     checkpoint_callback = ModelCheckpoint(
         "checkpoints/", save_top_k=1, monitor="val_elbo", 
     )
@@ -157,7 +157,7 @@ class ProjConfig(BaseConfig):
         logger=logger,
         callbacks=[checkpoint_callback],
         val_check_interval=0.1,
-        gradient_clip_val=2.0,
+        gradient_clip_val=5.0,
     )
     
 if __name__ == "__main__":
@@ -166,7 +166,7 @@ if __name__ == "__main__":
 
     print(json.dumps(cfg.to_dict(), indent=2))
 
-    vae = LowRankVariationalAutoencoder(**cfg.vae_config)
+    vae = LowRankVAE(**cfg.vae_config)
 
     def num_pars(module):
         return sum(p.numel() for p in module.parameters())/1e6

@@ -5,7 +5,7 @@ from pytorch_lightning.loggers import WandbLogger
 
 # from turb_vae.vae.layers import Decoder2d, Encoder2d
 # from turb_vae.vae.vae import LowRankMultivariateNormal, LowRankVariationalAutoencoder
-from vae.vae import LowRankMultivariateNormal, LowRankVariationalAutoencoder
+from vae.vae import LowRankMultivariateNormal, LowRankVAE
 
 torch.set_float32_matmul_precision("medium")
 
@@ -17,7 +17,7 @@ class VAETrainer(pl.LightningModule):
 
         self.cfg = cfg
         
-        self.vae = LowRankVariationalAutoencoder(
+        self.vae = LowRankVAE(
             **cfg.vae_config
         )
 

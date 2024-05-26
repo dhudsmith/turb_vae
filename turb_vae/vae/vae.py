@@ -1,8 +1,9 @@
 from typing import Tuple
 
 import torch
-from layers import Decoder2d, Encoder2d
 from torch import nn
+
+from .layers import Decoder2d, Encoder2d
 
 # from .layers import Decoder2d, Encoder2d
 
@@ -80,9 +81,9 @@ class LowRankMultivariateNormal(torch.distributions.LowRankMultivariateNormal):
         return 0.5 * (tr_cov + sqr_mu - self.event_size - logdet_sigma) / self.event_size
 
 
-class LowRankVariationalAutoencoder(nn.Module):
+class LowRankVAE(nn.Module):
     r"""
-    The `VariationalAutoencoder` class.
+    The `LowRankVAE` class.
 
     Args:
         encoder_kwargs (`dict`):
@@ -111,8 +112,13 @@ class LowRankVariationalAutoencoder(nn.Module):
                  num_particles=1, 
                  cov_factor_init_scale = 1.):
         super().__init__()
+
+        assert rank >= 1 and isinstance(rank, int), "The rank must be a positive integer."
+
         self.encoder = Encoder2d(**encoder_kwargs)
         self.decoder = Decoder2d(**decoder_kwargs)
+        assert self.encoder.downsample_factor == self.decoder.upsample_factor, "The encoder and decoder must have the same downsample/upsample factor."
+
         self.embed_dim = embed_dim
         self.input_size = input_size
         self.rank = rank
@@ -148,113 +154,7 @@ class LowRankVariationalAutoencoder(nn.Module):
         )
         
 
-        assert rank >= 1 and isinstance(rank, int), "The rank must be a positive integer."
-
-    def forward(
-        self, x: torch.FloatTensor
-    ) -> Tuple[torch.FloatTensor, LowRankMultivariateNormal]:
-        r"""The forward method of the `VariationalAutoencoder` class."""
-        batch_size = x.shape[0]
-
-        h = self.encoder(x)  # (batch_size, *_enc_output_shape)
-        h = h.view(batch_size, -1)  # (batch_size, prod(_enc_output_shape))
-        dist_pars = self.fc_encode(h)  # (batch_size, embed_dim*(2+rank))
-
-        # pull off the individual params
-        loc = dist_pars[..., :self.embed_dim]  # (batch_size, embed_dim)
-        cov_diag = dist_pars[..., self.embed_dim : 2*self.embed_dim].exp()  # (batch_size, embed_dim)
-        cov_factor = self.cov_factor_init_scale * dist_pars[..., 2*self.embed_dim:]  # (batch_size, embed_dim*rank)
-        cov_factor = cov_factor.view(batch_size, self.embed_dim, self.rank)  # (batch_size, embed_dim, rank)
-
-        # create the distribution object
-        dist = LowRankMultivariateNormal(loc, cov_factor, cov_diag)
         
-        # sample the latent variables
-        z = dist.rsample((self.num_particles,))  # (num_particles, batch_size, embed_dim)
-
-        # project for the decoder
-        h_dec = self.fc_decode(z) # (num_particles, batch_size, prod(dec_input_shape))
-
-        # reshape for the decoder combining batch and particle dimensions
-        h_dec = h_dec.view(self.num_particles * batch_size, *self._dec_input_shape)  # (num_particles*batch_size, *_dec_input_shape)
-            
-        # decode
-        x_hat = self.decoder(h_dec)  # (num_particles*batch_size, C, *input_shape)
-    
-        # now separate the batch and particle dimensions
-        x_hat = x_hat.view(self.num_particles, batch_size, *x_hat.shape[1:]) # (num_particles, batch_size, C, *input_shape)
-
-        return x_hat, dist
-
-class ConditionalLowRankVariationalAutoencoder(nn.Module):
-    r"""
-    The `VariationalAutoencoder` class.
-
-    Args:
-        encoder_kwargs (`dict`):
-            The arguments for the encoder network.
-        decoder_kwargs (`dict`):
-            The arguments for the decoder network.
-        embed_dim (`int`):
-            The size of the latent dimension.
-        input_size (`Tuple[int, int]`):
-            The shape of the input tensor (H, W)
-        rank (`int`):
-            The rank of the approximate posterior.
-        num_particles (`int`, optional):
-            The number of particles to sample from the approximate posterior. Default is 1.
-        cov_factor_init_scale (`float`, optional):
-            The scale to initialize the off-diagonal part of the covariance matrix. Default is 1.
-            This scales the output of the encoder elements for cov_factor. 
-    """
-
-    def __init__(self, 
-                 encoder_kwargs: dict, 
-                 decoder_kwargs: dict, 
-                 embed_dim: int, 
-                 input_size: Tuple[int, int], 
-                 rank: int, 
-                 num_particles=1, 
-                 cov_factor_init_scale = 1.):
-        super().__init__()
-        self.encoder = Encoder2d(**encoder_kwargs)
-        self.decoder = Decoder2d(**decoder_kwargs)
-        self.embed_dim = embed_dim
-        self.input_size = input_size
-        self.rank = rank
-        self.num_particles = num_particles
-        self.cov_factor_init_scale = cov_factor_init_scale
-
-        # encoder linear projection
-        self._enc_output_shape = (
-            self.encoder.out_channels, 
-            self.input_size[0] // self.encoder.downsample_factor, 
-            self.input_size[1] // self.encoder.downsample_factor
-            )
-        self.fc_encode =  nn.Sequential(
-            nn.Tanh(),
-            nn.Linear(
-                in_features = prod(self._enc_output_shape), 
-                out_features = self.embed_dim * (2 + self.rank)
-            ),
-        )
-
-        # decoder linear projection
-        self._dec_input_shape = (
-            self.decoder.in_channels,
-            self.input_size[0] // self.encoder.downsample_factor,
-            self.input_size[1] // self.encoder.downsample_factor
-            )
-        self.fc_decode = nn.Sequential(
-            nn.Linear(
-                in_features = self.embed_dim, 
-                out_features = prod(self._dec_input_shape)
-            ),
-            nn.Tanh()
-        )
-        
-
-        assert rank >= 1 and isinstance(rank, int), "The rank must be a positive integer."
 
     def forward(
         self, x: torch.FloatTensor
@@ -319,7 +219,7 @@ if __name__ == "__main__":
         cov_factor_init_scale = 1e-3,    
     )
 
-    proj_vae = LowRankVariationalAutoencoder(**vae_config)
+    proj_vae = LowRankVAE(**vae_config)
 
     print("Num pars:", sum(p.numel() for p in proj_vae.parameters()))
 
