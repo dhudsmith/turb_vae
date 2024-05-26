@@ -5,18 +5,19 @@ from pytorch_lightning.loggers import WandbLogger
 
 # from turb_vae.vae.layers import Decoder2d, Encoder2d
 # from turb_vae.vae.vae import LowRankMultivariateNormal, LowRankVariationalAutoencoder
-from vae.vae import LowRankMultivariateNormal, LowRankVariationalAutoencoderProj
+from vae.vae import LowRankMultivariateNormal, LowRankVariationalAutoencoder
 
 torch.set_float32_matmul_precision("medium")
 
 
 class VAETrainer(pl.LightningModule):
-    def __init__(self, cfg: BaseConfig):  #encoder: Encoder2d, decoder: Decoder2d, rank = 3, num_particles = 1, kl_weight: float = 1.0, learning_rate: float = 1e-3):
+    def __init__(self, cfg: BaseConfig): 
         super().__init__()
+        self.save_hyperparameters(logger=False)
 
         self.cfg = cfg
         
-        self.vae = LowRankVariationalAutoencoderProj(
+        self.vae = LowRankVariationalAutoencoder(
             **cfg.vae_config
         )
 
@@ -31,8 +32,10 @@ class VAETrainer(pl.LightningModule):
         self.log("train_kl_loss", kl_loss, prog_bar=True, on_step=True)
         self.log("train_recon_loss", recon_loss, prog_bar=True, on_step=True)
 
+        # step the kl loss weight
         num_samples = batch[0].shape[0]
         self.kl_scheduler.step(num_samples)
+        self.log("kl_weight", self.kl_scheduler.get_kl_weight(), prog_bar=True, on_step=True, on_epoch=False)
 
         return loss
 
@@ -45,6 +48,7 @@ class VAETrainer(pl.LightningModule):
         self.log(
             "val_recon_loss", recon_loss, prog_bar=True, on_step=False, on_epoch=True
         )
+        self.log("val_elbo", recon_loss + kl_loss, prog_bar=True, on_step=False, on_epoch=True)
 
         return loss
 
@@ -66,13 +70,11 @@ class VAETrainer(pl.LightningModule):
         n_hat, dist = self.vae(n)
 
         # we unsqueeze n to add the dummy particle dimension
-        recon_loss = torch.nn.functional.mse_loss(n_hat, n.unsqueeze(0))
-        kl_loss = dist.kl_divergence().mean()
+        normalization = n.shape[0] * n.shape[1] * n.shape[2] * n.shape[3]  # the total number of pixels in the batch
+        recon_loss = torch.nn.functional.mse_loss(n_hat, n.unsqueeze(0), reduction="sum") / self.vae.num_particles / normalization  # average the loss by the number of particles
+        kl_loss = dist.kl_divergence().sum() / normalization
         beta = self.kl_scheduler.get_kl_weight()
         loss =  recon_loss + beta * kl_loss
-
-        # log the kl weight
-        self.log("kl_weight", beta, prog_bar=True, on_step=True, on_epoch=False)
 
         return loss, recon_loss, kl_loss
     

@@ -1,6 +1,6 @@
 import torch
 
-from turb_vae.vae.vae import LowRankVariationalAutoencoderProj
+from turb_vae.vae.vae import LowRankVariationalAutoencoder
 
 
 def test_projected_vae():
@@ -23,7 +23,7 @@ def test_projected_vae():
         "hidden_dims": (32,) * 3,
         "activation": "relu"
     }
-    proj_vae = LowRankVariationalAutoencoderProj(
+    proj_vae = LowRankVariationalAutoencoder(
         encoder_kwargs=proj_enc_kwargs,
         decoder_kwargs=proj_dec_kwargs,
         embed_dim=10,

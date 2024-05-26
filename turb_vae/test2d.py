@@ -1,12 +1,12 @@
 import matplotlib.pyplot as plt
 import torch
-from config import TurbVaeConfig as cfg
+from config import ProjConfig as cfg
 from train2d import VAETrainer
 
 torch.set_grad_enabled(False)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-model = VAETrainer.load_from_checkpoint("checkpoints/epoch=0-step=15620-v2.ckpt", cfg=cfg).to(device)
+model = VAETrainer.load_from_checkpoint("checkpoints/epoch=0-step=4686.ckpt", cfg=cfg).to(device)
 
 # export for turbulence removal project
 # torch.save(model.vae.decoder.state_dict(), "/home/hudson/code/turbulence_model/models/turb_vae/decoder_kl_1.pt")
