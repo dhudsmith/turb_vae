@@ -76,10 +76,13 @@ class VAETrainer(pl.LightningModule):
         return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
 
     def get_losses(self, batch):
-        n, _ = batch
+        n, L0 = batch
+        if len(L0.shape) == 1:
+            L0 = L0[:, None]
+
         n_hat: torch.FloatTensor
         dist: LowRankMultivariateNormal
-        n_hat, dist = self.vae(n)
+        n_hat, dist = self.vae(n, L0)
 
         # we unsqueeze n to add the dummy particle dimension
         normalization = (

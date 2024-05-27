@@ -45,7 +45,7 @@ class VonKarmanXY(IterableDataset):
 
         self.__rho = self.__create_rho_matrix()
 
-    def __iter__(self) -> Iterator[Tuple[torch.Tensor, float]]:
+    def __iter__(self) -> Iterator[Tuple[torch.Tensor, torch.Tensor]]:
         worker_info = get_worker_info()
         if worker_info is not None:
             # for multiprocessing: set the numpy seed based on the worker id
@@ -79,7 +79,9 @@ class VonKarmanXY(IterableDataset):
             # remove the dummy batch dimension
             n_pt = n_pt.squeeze(0)
 
-            yield n_pt, L0
+            L0_pt = torch.tensor(L0, dtype=torch.float32)
+
+            yield n_pt, L0_pt
 
     def __len__(self):
         return self.num_samples
@@ -122,7 +124,7 @@ class VonKarmanXY(IterableDataset):
         rho = rho.cpu().numpy()
 
         return rho
-    
+
     def __repr__(self) -> str:
         return f"VonKarmanXY(num_samples={self.num_samples}, resolution={self.res_x}x{self.res_y}, x_range=({self.x_min}, {self.x_max}), y_range=({self.y_min}, {self.y_max}), L0_vals={self.L0_vals}, L0_probs={self.L0_probs}, vk_cache={self.vk_cache}, base_seed={self.base_seed}, tfms={repr(self.tfms)})"
 

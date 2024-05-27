@@ -1,5 +1,4 @@
 import numpy as np
-from vae.vae import LowRankVAE
 
 
 class ClassDictMixin:
@@ -13,7 +12,7 @@ class ClassDictMixin:
 class LightningModelConfig(ClassDictMixin):
     vae_config = dict(
         encoder_kwargs=dict(
-            in_channels=1,
+            in_channels=2,
             out_channels=8,
             num_blocks=(1, 3, 3, 3),
             block_out_channels=(64,) * 4,
@@ -27,13 +26,14 @@ class LightningModelConfig(ClassDictMixin):
             act_fn="relu",
         ),
         rank=3,
+        is_conditional=True,
         embed_dim=512,
         input_size=(64, 64),
         num_particles=5,
         cov_factor_init_scale=1.0,
     )
 
-    kl_scheduler_kwargs = dict(start=1e-4, stop=1, n_samples=int(8e3))
+    kl_scheduler_kwargs = dict(start=1e-5, stop=1, n_samples=int(8e6))
 
     learning_rate = 1e-4
 
@@ -46,8 +46,8 @@ class DataConfig(ClassDictMixin):
     L0_vals_logspace_kwargs = dict(start=-1, stop=1, num=30, dtype=np.float32)
 
     train_dataset_kwargs = dict(
-        num_samples=int(1e4),
-        resolution=(8, 8),
+        num_samples=int(1e7),
+        resolution=(24, 24),
         x_range=(-1, 1),
         y_range=(-1, 1),
         L0_probs=None,
@@ -85,6 +85,8 @@ class TrainingConfig(ClassDictMixin):
 
 if __name__ == "__main__":
     import json
+
+    from vae.vae import LowRankVAE
 
     model_cfg = LightningModelConfig()
     data_cfg = DataConfig()
