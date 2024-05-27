@@ -1,7 +1,5 @@
 import numpy as np
-
-# from turb_vae.data_generation.dataset import VonKarmanXY
-# from turb_vae.vae.layers import Decoder2d, Encoder2d
+from vae.vae import LowRankVAE
 
 
 class ClassDictMixin:
@@ -16,23 +14,23 @@ class LightningModelConfig(ClassDictMixin):
     vae_config = dict(
         encoder_kwargs=dict(
             in_channels=1,
-            out_channels=16,
-            num_blocks=(1, 5, 5, 5),
-            block_out_channels=(96,) * 4,
+            out_channels=8,
+            num_blocks=(1, 3, 3, 3),
+            block_out_channels=(64,) * 4,
             act_fn="relu",
         ),
         decoder_kwargs=dict(
             in_channels=4,
             out_channels=1,
             num_blocks=(3, 3, 3, 1),
-            block_out_channels=(64,) * 4,
+            block_out_channels=(32,) * 4,
             act_fn="relu",
         ),
         rank=3,
         embed_dim=512,
         input_size=(64, 64),
         num_particles=5,
-        cov_factor_init_scale=1e-3,
+        cov_factor_init_scale=1.0,
     )
 
     kl_scheduler_kwargs = dict(start=1e-4, stop=1, n_samples=int(8e3))
@@ -49,7 +47,7 @@ class DataConfig(ClassDictMixin):
 
     train_dataset_kwargs = dict(
         num_samples=int(1e4),
-        resolution=(16, 16),
+        resolution=(8, 8),
         x_range=(-1, 1),
         y_range=(-1, 1),
         L0_probs=None,
@@ -75,7 +73,7 @@ class DataConfig(ClassDictMixin):
 
 
 class TrainingConfig(ClassDictMixin):
-    logger_kwargs = dict(project="turb_vae", offline=True)
+    logger_kwargs = dict(project="turb_vae", offline=False)
     checkpoint_kwargs = dict(dirpath="checkpoints/", save_top_k=1, monitor="val_elbo")
     trainer_kwargs = dict(
         log_every_n_steps=100,
@@ -95,14 +93,14 @@ if __name__ == "__main__":
     for cfg in [LightningModelConfig, LightningModelConfig, TrainingConfig]:
         print(json.dumps(cfg.to_dict(), indent=4))
 
-    # # test number of parameters
-    # vae = LowRankVAE(**LightningModelConfig.vae_config)
+    # test number of parameters
+    vae = LowRankVAE(**LightningModelConfig.vae_config)  # type: ignore
 
-    # def num_pars(module):
-    #     return sum(p.numel() for p in module.parameters())/1e6
+    def num_pars(module):
+        return sum(p.numel() for p in module.parameters()) / 1e6
 
-    # print(f"VAE num parameters: {num_pars(vae):.2f}M")
-    # print(f"Encoder num parameters: {num_pars(vae.encoder):.2f}M")
-    # print(f"Decoder num parameters: {num_pars(vae.decoder):.2f}M")
-    # print(f"fc_encode num parameters: {num_pars(vae.fc_encode):.2f}M")
-    # print(f"fc_decode num parameters: {num_pars(vae.fc_decode):.2f}M")
+    print(f"VAE num parameters: {num_pars(vae):.2f}M")
+    print(f"Encoder num parameters: {num_pars(vae.encoder):.2f}M")
+    print(f"Decoder num parameters: {num_pars(vae.decoder):.2f}M")
+    print(f"fc_encode num parameters: {num_pars(vae.fc_encode):.2f}M")
+    print(f"fc_decode num parameters: {num_pars(vae.fc_decode):.2f}M")

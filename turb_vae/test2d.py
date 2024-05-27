@@ -1,18 +1,29 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
-from config import ProjConfig as cfg
+import torch.nn as nn
+from config import DataConfig as data_cfg
+from data_generation.dataset import VonKarmanXY
 from train2d import VAETrainer
 
 torch.set_grad_enabled(False)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-model = VAETrainer.load_from_checkpoint("checkpoints/epoch=0-step=125000-v1.ckpt").to(device)
+model = VAETrainer.load_from_checkpoint("checkpoints/epoch=0-step=135-v1.ckpt").to(
+    device
+)
 
 # export for turbulence removal project
 # torch.save(model.vae.decoder.state_dict(), "/home/hudson/code/turbulence_model/models/turb_vae/decoder_kl_1.pt")
 
 # test the reconstructions
-dataset = cfg.test_dataset
+upsample = nn.Upsample(**data_cfg.upsample_kwargs)  # type: ignore
+L0_vals = np.logspace(**data_cfg.L0_vals_logspace_kwargs)  # type: ignore
+dataset = VonKarmanXY(
+    **data_cfg.test_dataset_kwargs,  # type: ignore
+    L0_vals=L0_vals,
+    tfms=upsample,
+)
 dataset.num_samples = 10
 
 # test reconstructions
@@ -45,4 +56,3 @@ for ix, n in enumerate(n_hat):
     axs[row, col].axis("off")
 plt.tight_layout()
 plt.savefig("plots/all_n_hat.png")
-
