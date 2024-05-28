@@ -134,15 +134,15 @@ def main(model_cfg: LightningModelConfig, data_cfg: DataConfig, training_cfg: Tr
     test_dataloader = DataLoader(test_dataset, **data_cfg.test_dataloader_kwargs)  # type: ignore
 
     # logger
-    logger = WandbLogger(**train_cfg.logger_kwargs)  # type: ignore
+    logger = WandbLogger(**training_cfg.logger_kwargs)  # type: ignore
     logger.experiment.config.update(model_cfg.to_dict())
     logger.experiment.config.update(data_cfg.to_dict())
-    logger.experiment.config.update(train_cfg.to_dict())
+    logger.experiment.config.update(training_cfg.to_dict())
 
     # training
-    checkpoint = ModelCheckpoint(**train_cfg.checkpoint_kwargs)  # type: ignore
+    checkpoint = ModelCheckpoint(**training_cfg.checkpoint_kwargs)  # type: ignore
     trainer = pl.Trainer(
-        **train_cfg.trainer_kwargs,  # type: ignore
+        **training_cfg.trainer_kwargs,  # type: ignore
         logger=logger,
         callbacks=[checkpoint],
     )
@@ -154,11 +154,13 @@ def main(model_cfg: LightningModelConfig, data_cfg: DataConfig, training_cfg: Tr
     trainer.test(model, dataloaders=test_dataloader)
 
 if __name__ == "__main__":
-    from config import DataConfig as data_cfg
-    from config import LightningModelConfig as model_cfg
-    from config import TrainingConfig as train_cfg
+    from config import DataConfig, LightningModelConfig, TrainingConfig
+    
+    model_cfg = LightningModelConfig()
+    data_cfg = DataConfig()
+    training_cfg = TrainingConfig()
 
-    main(model_cfg, data_cfg, train_cfg)
+    main(model_cfg, data_cfg, training_cfg)
 
 
     

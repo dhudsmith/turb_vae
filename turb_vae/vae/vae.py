@@ -32,7 +32,7 @@ class DiagonalMultivariateNormal(torch.distributions.Normal):
     """
 
     def __init__(self, loc: torch.Tensor, scale: torch.Tensor):
-        super().__init__(loc, torch.diag_embed(scale))
+        super().__init__(loc, scale)
 
     def kl_divergence(self) -> torch.Tensor:
         r"""The KL divergence from a standard multivariate normal"""

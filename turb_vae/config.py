@@ -1,4 +1,3 @@
-import numpy as np
 
 
 class ClassDictMixin:
@@ -13,16 +12,16 @@ class LightningModelConfig(ClassDictMixin):
     vae_config = dict(
         encoder_kwargs=dict(
             in_channels=2,
-            out_channels=16,
-            num_blocks=(1, 4, 4, 4),
-            block_out_channels=(96,) * 4,
+            out_channels=8,
+            num_blocks=(1, 3, 3, 3),
+            block_out_channels=(64,) * 4,
             act_fn="relu",
         ),
         decoder_kwargs=dict(
-            in_channels=16,
+            in_channels=4,
             out_channels=1,
-            num_blocks=(4, 4, 4, 1),
-            block_out_channels=(96,) * 4,
+            num_blocks=(3, 3, 3, 1),
+            block_out_channels=(64,) * 4,
             act_fn="relu",
         ),
         rank=0,
@@ -43,11 +42,11 @@ class DataConfig(ClassDictMixin):
         size=LightningModelConfig.vae_config["input_size"], mode="bicubic"
     )
 
-    L0_vals_logspace_kwargs = dict(start=-1, stop=1, num=30, dtype=np.float32)
+    L0_vals_logspace_kwargs = dict(start=-1, stop=1, num=30)
 
     train_dataset_kwargs = dict(
         num_samples=int(1e6),
-        resolution=(32, 32),
+        resolution=(8, 8),
         x_range=(-1, 1),
         y_range=(-1, 1),
         L0_probs=None,
@@ -65,7 +64,7 @@ class DataConfig(ClassDictMixin):
 
     # dataloaders
     train_dataloader_kwargs = dict(
-        batch_size=64, num_workers=40, persistent_workers=True
+        batch_size=64, num_workers=15, persistent_workers=True
     )
     val_dataloader_kwargs = train_dataloader_kwargs.copy()
     val_dataloader_kwargs["batch_size"] = int(1e3)
@@ -73,7 +72,7 @@ class DataConfig(ClassDictMixin):
 
 
 class TrainingConfig(ClassDictMixin):
-    logger_kwargs = dict(project="turb_vae", offline=False)
+    logger_kwargs = dict(project="turb_vae", offline=True)
     checkpoint_kwargs = dict(dirpath="checkpoints/", save_top_k=1, monitor="val_elbo")
     trainer_kwargs = dict(
         log_every_n_steps=100,
@@ -90,9 +89,10 @@ if __name__ == "__main__":
 
     model_cfg = LightningModelConfig()
     data_cfg = DataConfig()
-    train_cfg = TrainingConfig()
+    training_cfg = TrainingConfig()
 
-    for cfg in [LightningModelConfig, LightningModelConfig, TrainingConfig]:
+    for cfg in [model_cfg, data_cfg, training_cfg]:
+        print(cfg)
         print(json.dumps(cfg.to_dict(), indent=4))
 
     # test number of parameters
