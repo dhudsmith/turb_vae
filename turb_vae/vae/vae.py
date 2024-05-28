@@ -84,7 +84,7 @@ class LowRankMultivariateNormal(torch.distributions.LowRankMultivariateNormal):
         return 0.5 * (tr_cov + sqr_mu - self.event_size - logdet_sigma)
 
 
-class LowRankVAE(nn.Module):
+class VAE(nn.Module):
     r"""
     The `LowRankVAE` class.
 
@@ -104,6 +104,7 @@ class LowRankVAE(nn.Module):
         cov_factor_init_scale (`float`, optional):
             The scale to initialize the off-diagonal part of the covariance matrix. Default is 1.
             This scales the output of the encoder elements for cov_factor.
+            Has no effect for rank=0.
     """
 
     def __init__(
@@ -119,9 +120,9 @@ class LowRankVAE(nn.Module):
     ):
         super().__init__()
 
-        assert rank >= 1 and isinstance(
+        assert rank >= 0 and isinstance(
             rank, int
-        ), "The rank must be a positive integer."
+        ), "The rank must be a non-negative integer."
 
         self.encoder = Encoder2d(**encoder_kwargs)
         self.decoder = Decoder2d(**decoder_kwargs)
@@ -209,18 +210,22 @@ class LowRankVAE(nn.Module):
 
         # pull off the individual params
         loc = dist_pars[..., : self.embed_dim]  # (batch_size, embed_dim)
-        cov_diag = dist_pars[
+        diag = dist_pars[
             ..., self.embed_dim : 2 * self.embed_dim
         ].exp()  # (batch_size, embed_dim)
-        cov_factor = (
-            self.cov_factor_init_scale * dist_pars[..., 2 * self.embed_dim :]
-        )  # (batch_size, embed_dim*rank)
-        cov_factor = cov_factor.view(
-            batch_size, self.embed_dim, self.rank
-        )  # (batch_size, embed_dim, rank)
-
+        # we only pull off cov_factor for rank>0
+        
         # create the distribution object
-        dist = LowRankMultivariateNormal(loc, cov_factor, cov_diag)
+        if self.rank == 0:
+            dist = DiagonalMultivariateNormal(loc=loc, scale=diag)
+        else:
+            cov_factor = (
+                self.cov_factor_init_scale * dist_pars[..., 2 * self.embed_dim :]
+            )  # (batch_size, embed_dim*rank)
+            cov_factor = cov_factor.view(
+                batch_size, self.embed_dim, self.rank
+            )  # (batch_size, embed_dim, rank)
+            dist = LowRankMultivariateNormal(loc, cov_factor, diag)
 
         return dist
 
@@ -260,7 +265,7 @@ if __name__ == "__main__":
     sys.path.append("turb_vae")
     from config import LightningModelConfig as model_cfg
 
-    vae = LowRankVAE(**model_cfg.vae_config)  # type: ignore
+    vae = VAE(**model_cfg.vae_config)  # type: ignore
 
     print("Num pars:", sum(p.numel() for p in vae.parameters()))
 

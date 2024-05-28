@@ -1,14 +1,17 @@
 import numpy as np
 import pytorch_lightning as pl
 import torch
-from data_generation.dataset import VonKarmanXY
-from kl_scheduler import KLScheduler
-from torch import nn
-from torch.utils.data import DataLoader
 
 # from turb_vae.vae.layers import Decoder2d, Encoder2d
 # from turb_vae.vae.vae import LowRankMultivariateNormal, LowRankVariationalAutoencoder
-from vae.vae import LowRankMultivariateNormal, LowRankVAE
+from config import DataConfig, LightningModelConfig, TrainingConfig
+from data_generation.dataset import VonKarmanXY
+from kl_scheduler import KLScheduler
+from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import WandbLogger
+from torch import nn
+from torch.utils.data import DataLoader
+from vae.vae import VAE, LowRankMultivariateNormal
 
 torch.set_float32_matmul_precision("medium")
 
@@ -20,7 +23,7 @@ class VAETrainer(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        self.vae = LowRankVAE(**vae_kwargs)
+        self.vae = VAE(**vae_kwargs)
         self.kl_scheduler = KLScheduler(**kl_scheduler_kwargs)
         self.learning_rate: float = learning_rate
 
@@ -99,14 +102,7 @@ class VAETrainer(pl.LightningModule):
 
         return loss, recon_loss, kl_loss
 
-
-if __name__ == "__main__":
-    from config import DataConfig as data_cfg
-    from config import LightningModelConfig as model_cfg
-    from config import TrainingConfig as train_cfg
-    from pytorch_lightning.callbacks import ModelCheckpoint
-    from pytorch_lightning.loggers import WandbLogger
-
+def main(model_cfg: LightningModelConfig, data_cfg: DataConfig, training_cfg: TrainingConfig):
     model = VAETrainer(
         vae_kwargs=model_cfg.vae_config,
         kl_scheduler_kwargs=model_cfg.kl_scheduler_kwargs,
@@ -156,3 +152,13 @@ if __name__ == "__main__":
         model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader
     )
     trainer.test(model, dataloaders=test_dataloader)
+
+if __name__ == "__main__":
+    from config import DataConfig as data_cfg
+    from config import LightningModelConfig as model_cfg
+    from config import TrainingConfig as train_cfg
+
+    main(model_cfg, data_cfg, train_cfg)
+
+
+    

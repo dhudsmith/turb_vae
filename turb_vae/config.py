@@ -13,19 +13,19 @@ class LightningModelConfig(ClassDictMixin):
     vae_config = dict(
         encoder_kwargs=dict(
             in_channels=2,
-            out_channels=8,
-            num_blocks=(1, 3, 3, 3),
-            block_out_channels=(64,) * 4,
+            out_channels=16,
+            num_blocks=(1, 4, 4, 4),
+            block_out_channels=(96,) * 4,
             act_fn="relu",
         ),
         decoder_kwargs=dict(
-            in_channels=4,
+            in_channels=16,
             out_channels=1,
-            num_blocks=(3, 3, 3, 1),
-            block_out_channels=(32,) * 4,
+            num_blocks=(4, 4, 4, 1),
+            block_out_channels=(96,) * 4,
             act_fn="relu",
         ),
-        rank=3,
+        rank=0,
         is_conditional=True,
         embed_dim=512,
         input_size=(64, 64),
@@ -33,7 +33,7 @@ class LightningModelConfig(ClassDictMixin):
         cov_factor_init_scale=1.0,
     )
 
-    kl_scheduler_kwargs = dict(start=1e-5, stop=1, n_samples=int(8e6))
+    kl_scheduler_kwargs = dict(start=1e-7, stop=1, n_samples=int(9e5))
 
     learning_rate = 1e-4
 
@@ -46,8 +46,8 @@ class DataConfig(ClassDictMixin):
     L0_vals_logspace_kwargs = dict(start=-1, stop=1, num=30, dtype=np.float32)
 
     train_dataset_kwargs = dict(
-        num_samples=int(1e7),
-        resolution=(24, 24),
+        num_samples=int(1e6),
+        resolution=(32, 32),
         x_range=(-1, 1),
         y_range=(-1, 1),
         L0_probs=None,
@@ -78,7 +78,7 @@ class TrainingConfig(ClassDictMixin):
     trainer_kwargs = dict(
         log_every_n_steps=100,
         max_epochs=1,
-        val_check_interval=0.1,
+        val_check_interval=0.01,
         gradient_clip_val=5.0,
     )
 
@@ -86,7 +86,7 @@ class TrainingConfig(ClassDictMixin):
 if __name__ == "__main__":
     import json
 
-    from vae.vae import LowRankVAE
+    from vae.vae import VAE
 
     model_cfg = LightningModelConfig()
     data_cfg = DataConfig()
@@ -96,7 +96,7 @@ if __name__ == "__main__":
         print(json.dumps(cfg.to_dict(), indent=4))
 
     # test number of parameters
-    vae = LowRankVAE(**LightningModelConfig.vae_config)  # type: ignore
+    vae = VAE(**LightningModelConfig.vae_config)  # type: ignore
 
     def num_pars(module):
         return sum(p.numel() for p in module.parameters()) / 1e6
